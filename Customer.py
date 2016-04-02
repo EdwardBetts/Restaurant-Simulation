@@ -13,7 +13,10 @@ class Customer(object):
         self.custID = Customer.custID() + 1
     
     def getServiceTime(self):
-        return random.expovariate(1.0/inputs.serviceTimeMean)
+        serviceTime = int(random.expovariate(1.0/(inputs.serviceTimeMeanMinutes*60.0)))
+        while serviceTime == 0:
+            serviceTime = int(random.expovariate(1.0/(inputs.serviceTimeMeanMinutes*60.0)))
+        return serviceTime
     
     def printInfo(self):
         print "Customer id: #{idNum}".format(idNum = custID)

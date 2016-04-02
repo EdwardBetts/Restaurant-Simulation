@@ -1,10 +1,13 @@
 import Time
 import arrivals
 import printStatements as printFunc
+import ServiceSystem
 
 end = Time.Time(days = 0, hours = 6)
 
-currentTime = Time.Time(0)
+currentTime = Time.Time(seconds = 0)
+
+serviceLines = ServiceSystem.ServiceSystem()
 
 while currentTime.compare(end) <= 0:
     if currentTime.newHour():
@@ -17,8 +20,11 @@ while currentTime.compare(end) <= 0:
         print "{timePrint}".format(timePrint = currentTime.stringInfo())
     currentTime.addSecond()
     
+    serviceLines.freeUpServers(currentTime)
+    
     for person in incomingArrivals:
         if currentTime.compare(person.arrivalTime) == 0:
             cTime = currentTime.stringInfo()
             print "  {cTime}: Customer #{custID} arrived at the restaurant".format(cTime = cTime, custID = person.custID)
+            serviceLines.addCustomer(person, currentTime)
             incomingArrivals.remove(person)

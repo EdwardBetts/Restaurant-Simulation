@@ -1,2 +1,3 @@
-serviceTimeMean = 3.0
-arrivalsPerHour = 50
+serviceTimeMeanMinutes = 1.5
+arrivalsPerHour = 40
+numberOfServers = 2

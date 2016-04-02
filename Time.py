@@ -3,7 +3,7 @@ hourSeconds = 60*60
 
 class Time(object):
     
-    def __init__(self, seconds = 0, minutes = 0, hours = 0, days = 0, timeObject = None):
+    def __init__(self, timeObject = None, seconds = 0, minutes = 0, hours = 0, days = 0):
         if timeObject is not None:
             self.days, self.hours, self.minutes, self.seconds = timeObject.getAttributes()
             self.hrFormat = (11 + self.hours % 12) + 1
@@ -109,7 +109,7 @@ class Time(object):
         self.days += 1
         
     def addSeconds(self, numSeconds):
-        seconds = self.totalSeconds() + numSeconds()
+        seconds = self.totalSeconds() + numSeconds
         self.days = seconds/daySeconds
         seconds = seconds % daySeconds
         self.hours = seconds/3600
