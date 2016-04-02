@@ -2,11 +2,13 @@ import inputs
 import Time
 import Queue
 import Server
+import printStatements
+import statistics
 
 class ServiceSystem(object):
     
     def __init__(self):
-        self.numServers = inputs.numberOfServers
+        self.numServers = int(inputs.numberOfServers)
         self.numServersBusy = 0
         self.numServersAvailable = self.numServers
         self.queue = Queue.Queue()
@@ -14,11 +16,17 @@ class ServiceSystem(object):
         self.initializeServers()
         self.numCustomersServed = 0
         self.waitingForFood = []
+        self.queueTimes = []
+        self.systemTimes = []
+        self.numInQueueCumulative = 0
         
     def initializeServers(self):
         for i in range(0, self.numServers):
             newServer = Server.Server()
             self.servers.append(newServer)
+            
+    def recordQueueSize(self):
+        self.numInQueueCumulative += self.queue.qsize()
         
     def addCustomer(self, newCust, currentTime):
         timeString = currentTime.stringInfo()
@@ -33,6 +41,8 @@ class ServiceSystem(object):
             print "  {t} Placing customer #{cid} to the ordering queue of size {size}".format(t = timeString, cid = newCust.custID, size = self.queue.qsize())
                 
     def findAvailableServer(self):
+        if self.numServersBusy == self.numServers:
+            return None
         for server in self.servers:
             if not server.isBusy():
                 return server
@@ -41,10 +51,9 @@ class ServiceSystem(object):
         timeString = currentTime.stringInfo()
         if self.queue.qsize() > 0:
             nextCust = self.queue.get()
+            self.queueTimes.append(nextCust.arrivalTime.timeDiff(currentTime))
             nextCust.queueTime = nextCust.arrivalTime.timeDiff(currentTime)
-            hours = nextCust.queueTime/3600
-            minutes = (nextCust.queueTime - 3600*hours)/60
-            seconds = nextCust.queueTime - 3600*hours - 60*minutes
+            hours, minutes, seconds = Time.Time().breakdown(nextCust.queueTime)
             if hours > 0:
                 print "  {t} Assigning the next customer in line, customer #{cid}, to server #{sid} after spending {hr} hours, {minutes} minutes, and {sec} seconds in the queue. There are now {num} customers left in the queue.".format(t = timeString, cid = nextCust.custID, sid = availableServer.serverID, num = self.queue.qsize(), hr = hours, minutes = minutes, sec = seconds)
             elif minutes > 0:
@@ -74,8 +83,24 @@ class ServiceSystem(object):
                 self.numCustomersServed += 1
                 print "  {t} Customer #{cid} has received their food. {num} customers have been served food now.".format(t = timeString, cid = customer.custID, num = self.numCustomersServed)
                 self.waitingForFood.remove(customer)
+                self.systemTimes.append(customer.arrivalTime.timeDiff(currentTime))
                 
     def serverInfo(self):
         for server in self.servers:
             server.printInfo()
+            
+    def printStatistics(self, currentTime):
+        printStatements.printStars()
+        print "SIMULATION STATISTICS"
+        printStatements.printStars()
+        print "Number of customers served: {num}".format(num = self.numCustomersServed)
+        print "Servers currently occupied: {num}/{total}".format(num = self.numServersBusy, total = self.numServers)
+        meanQueueTime = int(statistics.mean(self.queueTimes))
+        meanSystemTime = int(statistics.mean(self.systemTimes))
+        mqHours, mqMinutes, mqSeconds = Time.Time().breakdown(meanQueueTime)
+        msHours, msMinutes, msSeconds = Time.Time().breakdown(meanSystemTime)
+        print "Mean Order Queue Time: {timeString}".format(timeString = Time.Time().printString(mqHours, mqMinutes, mqSeconds))
+        print "Mean System Time: {timeString}".format(timeString = Time.Time().printString(msHours, msMinutes, msSeconds))
+        print "Average number of customers in the ordering queue: {0:.2f}".format(self.numInQueueCumulative/float(currentTime.totalSeconds()))
+        printStatements.printStars()
             

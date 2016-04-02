@@ -3,6 +3,23 @@ hourSeconds = 60*60
 
 class Time(object):
     
+    #Return hours, minutes, seconds
+    @staticmethod
+    def breakdown(numSeconds):
+        hours = numSeconds/3600
+        minutes = (numSeconds - hours*3600)/60
+        seconds = numSeconds - 3600*hours - 60*minutes
+        return hours, minutes, seconds
+    
+    @staticmethod
+    def printString(hours, minutes, seconds):
+        if hours > 0:
+            return "{hr} hours, {minutes} minutes, {sec} seconds".format(hr = hours, minutes = minutes, sec = seconds)
+        elif minutes > 0:
+            return "{minutes} minutes, {sec} seconds".format(minutes = minutes, sec = seconds)
+        else:
+            return "{sec} seconds".format(sec = seconds)
+    
     def __init__(self, timeObject = None, seconds = 0, minutes = 0, hours = 0, days = 0):
         if timeObject is not None:
             self.days, self.hours, self.minutes, self.seconds = timeObject.getAttributes()

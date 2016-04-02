@@ -11,6 +11,7 @@ class Server(object):
         self.cust = None
         self.releaseTime = None
         self.serverID = Server.serverID() + 1
+        self.lastOpenTime = 0
     
     def isBusy(self):
         return self.busy
