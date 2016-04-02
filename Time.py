@@ -108,6 +108,9 @@ class Time(object):
     def incrementDay(self):
         self.days += 1
         
+    def timeDiff(self, timeLater):
+        return timeLater.totalSeconds() - self.totalSeconds()
+        
     def addSeconds(self, numSeconds):
         seconds = self.totalSeconds() + numSeconds
         self.days = seconds/daySeconds
