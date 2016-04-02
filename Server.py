@@ -11,10 +11,23 @@ class Server(object):
         self.cust = None
         self.releaseTime = None
         self.serverID = Server.serverID() + 1
-        self.lastOpenTime = 0
+        self.lastOpenTime = Time.Time(seconds = 0)
+        self.lastCloseTime = None
+        self.totalOpenTime = 0
+        
+        #Additional servers are added for rush times
+        self.rushHour = False
+        
+    def isAdditional(self):
+        return self.rushHour
     
     def isBusy(self):
         return self.busy
+    
+    #Close the additional server and record info
+    def close(self, currentTime):
+        self.totalOpenTime += self.lastOpenTime.timeDiff(currentTime)
+        self.lastCloseTime = Time.Time(currentTime)
     
     def getUtilizationTime(self):
         return self.utilizationTime
