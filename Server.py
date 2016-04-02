@@ -14,9 +14,12 @@ class Server(object):
         self.lastOpenTime = Time.Time(seconds = 0)
         self.lastCloseTime = None
         self.totalOpenTime = 0
+        self.totalUtilizationTime = 0
+        self.lastCustomerArrivedTime = None
         
         #Additional servers are added for rush times
         self.rushHour = False
+        self.closed = False
         
     def isAdditional(self):
         return self.rushHour
@@ -26,11 +29,22 @@ class Server(object):
     
     #Close the additional server and record info
     def close(self, currentTime):
+        self.closed = True
         self.totalOpenTime += self.lastOpenTime.timeDiff(currentTime)
         self.lastCloseTime = Time.Time(currentTime)
+        self.totalOpenTime += self.lastOpenTime.timeDiff(currentTime)
+        
+    def getOpenTime(self, currentTime):
+        if self.closed:
+            return self.totalOpenTime
+        else:
+            return self.totalOpenTime + self.lastOpenTime.timeDiff(currentTime)
     
-    def getUtilizationTime(self):
-        return self.utilizationTime
+    def getUtilizationTime(self, currentTime):
+        if self.busy:
+            return self.utilizationTime + self.lastCustomerArrivedTime.timeDiff(currentTime)
+        else:
+            return self.utilizationTime
     
     def assignCustomer(self, newCust, currentTime):
         self.busy = True
@@ -38,6 +52,7 @@ class Server(object):
         newTime.addSeconds(newCust.serviceTime)
         self.releaseTime = newTime
         self.cust = newCust
+        self.lastCustomerArrivedTime = Time.Time(currentTime)
         
     def releaseCustomer(self):
         self.busy = False

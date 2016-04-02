@@ -4,6 +4,7 @@ import Queue
 import Server
 import printStatements
 import statistics
+import random
 
 class ServiceSystem(object):
     
@@ -22,6 +23,15 @@ class ServiceSystem(object):
         self.systemTimes = []
         self.numInQueueCumulative = 0
         self.currentlyRushTime = False
+        self.revenues = 0.0
+        self.foodCosts = 0.0
+        
+    def addRevenue(self):
+        orderPrice = random.normalvariate(inputs.averageOrderPrice, inputs.orderSD)
+        while orderPrice <= 0:
+            orderPrice = random.normalvariate(inputs.averageOrderPrice, inputs.orderSD)
+        self.revenues += orderPrice
+        self.foodCosts += orderPrice * (inputs.foodCostPercent/100.0)
         
     def initializeServers(self):
         for i in range(0, self.numServersAvailable):
@@ -44,8 +54,6 @@ class ServiceSystem(object):
             if server.rushHour:
                 print "  {t} Opening server #{sid} for the rush".format(t = timeString, sid = server.serverID)
                 server.lastOpenTime = Time.Time(currentTime)
-                self.numServersWorking += 1
-                self.numServersAvailable += 1
                 self.processQueue(server, currentTime)
         
     def endRushTime(self, currentTime):
@@ -60,8 +68,7 @@ class ServiceSystem(object):
             if server.rushHour:
                 if not server.isBusy():
                     print "  Server #{sid} is currently not taking an order and will now close".format(sid = server.serverID)
-                    self.numServersAvailable -= 1
-                    self.numServersWorking -= 1
+                    server.close(currentTime)
                 else:
                     print "  Server #{sid} is currently taking customer #{cid}'s order and will close after finishing up with the customer".format(sid = server.serverID, cid = server.cust.custID)
         printStatements.printStars()
@@ -70,10 +77,9 @@ class ServiceSystem(object):
         timeString = currentTime.stringInfo()
         availableServer = self.findAvailableServer()
         if availableServer is not None:
+            self.queueTimes.append(0)
             availableServer.assignCustomer(newCust, currentTime)
             print "  {t} Assigning customer #{cid} to server #{sid}".format(t = timeString, cid = newCust.custID, sid = availableServer.serverID)
-            self.numServersBusy += 1
-            self.numServersAvailable -= 1
         else:
             self.queue.put(newCust)
             print "  {t} Placing customer #{cid} to the ordering queue of size {size}".format(t = timeString, cid = newCust.custID, size = self.queue.qsize())
@@ -106,12 +112,12 @@ class ServiceSystem(object):
                 print "  {t} Assigning the next customer in line, customer #{cid}, to server #{sid} after spending {minutes} minutes, {sec} seconds in the queue. There are now {num} customers left in the queue.".format(t = timeString, cid = nextCust.custID, sid = availableServer.serverID, num = self.queue.qsize(), minutes = minutes, sec = seconds)
             else:
                 print "  {t} Assigning the next customer in line, customer #{cid}, to server #{sid} after spending {sec} seconds in the queue. There are now {num} customers left in the queue.".format(t = timeString, cid = nextCust.custID, sid = availableServer.serverID, num = self.queue.qsize(), sec = seconds)
-            self.numServersBusy += 1
             availableServer.assignCustomer(nextCust, currentTime)
         else:
             print "  {t} There are no more customers in line, so server #{sid} is free right now.".format(t = timeString, sid = availableServer.serverID)
             if self.currentlyRushTime:
                 self.endRushTime(currentTime)
+                availableServer.close(currentTime)
             
     def freeUpServers(self, currentTime):
         timeString = currentTime.stringInfo()
@@ -119,16 +125,13 @@ class ServiceSystem(object):
             if server.isBusy() and currentTime.compare(server.releaseTime) == 0:
                 finishingCust = server.cust
                 print "  {t} Customer #{cid} is done placing an order with server #{sid}".format(t = timeString, cid = finishingCust.custID, sid = server.serverID)
-                self.numServersBusy -= 1
-                self.numServersAvailable += 1
+                self.addRevenue()
                 server.releaseCustomer()
                 if not server.rushHour or (server.rushHour and self.currentlyRushTime):
                     self.processQueue(server, currentTime)
                 else:
                     print "  {t} It's past the rush hour, so server #{sid} is not taking any more customers".format(t = timeString, sid = server.serverID)
                     server.close(currentTime)
-                    self.numServersWorking -= 1
-                    self.numServersAvailable -= 1
                 finishingCust.setFoodDeliveryTime(currentTime)
                 self.waitingForFood.append(finishingCust)
         for customer in self.waitingForFood:
@@ -142,18 +145,54 @@ class ServiceSystem(object):
         for server in self.servers:
             server.printInfo()
             
+    def serversOccupiedTotal(self):
+        numOccupied = 0
+        numTotal = 0
+        for server in self.servers:
+            if server.isBusy():
+                numOccupied += 1
+                #print "Server #{sid} counts in occupied".format(sid = server.serverID)
+            if not server.rushHour or (server.rushHour and server.isBusy()):
+                numTotal += 1
+        return numOccupied, numTotal
+    
+    def getTotalServerUtilization(self, currentTime):
+        sum = 0.0
+        for server in self.servers:
+            sum += server.getUtilizationTime(currentTime)
+        return sum
+    
+    def getTotalServerOpenTime(self, currentTime):
+        sum = 0.0
+        for server in self.servers:
+            sum += server.getOpenTime(currentTime)
+        return sum
+            
     def printStatistics(self, currentTime):
         printStatements.printStars()
         print "SIMULATION STATISTICS"
         printStatements.printStars()
         print "Number of customers served: {num}".format(num = self.numCustomersServed)
-        print "Servers currently occupied: {num}/{total}".format(num = self.numServersBusy, total = self.numServersWorking)
+        numOccupied, numTotal = self.serversOccupiedTotal()
+        print "Servers currently occupied: {num}/{total}".format(num = numOccupied, total = numTotal)
+        serverUtilizationTime = self.getTotalServerUtilization(currentTime)
+        serverOpenTime = self.getTotalServerOpenTime(currentTime)
+        print "Average server utilization: {0:.2f}%".format(100.0*serverUtilizationTime/serverOpenTime)
+        serverPay = (serverOpenTime/3600.0)*inputs.serverHourlyPay
+        
+        print ""
+        
+        print "Server pay: {0:.2f}".format(serverPay)
+        print "Revenues: {0:.2f}".format(self.revenues)
+        print "Food costs: {0:.2f}".format(self.foodCosts)
         meanQueueTime = int(statistics.mean(self.queueTimes))
         meanSystemTime = int(statistics.mean(self.systemTimes))
         mqHours, mqMinutes, mqSeconds = Time.Time().breakdown(meanQueueTime)
         msHours, msMinutes, msSeconds = Time.Time().breakdown(meanSystemTime)
-        print "Mean Order Queue Time: {timeString}".format(timeString = Time.Time().printString(mqHours, mqMinutes, mqSeconds))
-        print "Mean System Time: {timeString}".format(timeString = Time.Time().printString(msHours, msMinutes, msSeconds))
+        
+        print ""
+        print "Mean order queue time: {timeString}".format(timeString = Time.Time().printString(mqHours, mqMinutes, mqSeconds))
+        print "Mean system time: {timeString}".format(timeString = Time.Time().printString(msHours, msMinutes, msSeconds))
         print "Average number of customers in the ordering queue: {0:.2f}".format(self.numInQueueCumulative/float(currentTime.totalSeconds()))
         printStatements.printStars()
             
