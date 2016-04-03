@@ -49,6 +49,7 @@ class Server(object):
     def assignCustomer(self, newCust, currentTime):
         self.busy = True
         newTime = Time.Time(currentTime)
+        newCust.startServiceTime = Time.Time(currentTime)
         newTime.addSeconds(newCust.serviceTime)
         self.releaseTime = newTime
         self.cust = newCust

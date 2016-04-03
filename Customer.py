@@ -13,6 +13,8 @@ class Customer(object):
         self.custID = Customer.custID() + 1
         self.foodWaitTime = self.setFoodWaitTime()
         self.foodDeliveryTime = None
+        self.startServiceTime = None
+        self.startFoodWaitTime = None
         self.queueTime = 0
     
     def getServiceTime(self):

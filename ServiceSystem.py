@@ -21,6 +21,9 @@ class ServiceSystem(object):
         self.waitingForFood = []
         self.queueTimes = []
         self.systemTimes = []
+        self.numPassengersWaitingForFood = []
+        self.serviceTimes = []
+        self.foodWaitTimes = []
         self.numInQueueCumulative = 0
         self.currentlyRushTime = False
         self.revenues = 0.0
@@ -44,6 +47,7 @@ class ServiceSystem(object):
             
     def recordQueueSize(self):
         self.numInQueueCumulative += self.queue.qsize()
+        self.numPassengersWaitingForFood.append(len(self.waitingForFood))
         
     def startRushTime(self, currentTime):
         if self.numAdditionalServers == 0:
@@ -127,6 +131,7 @@ class ServiceSystem(object):
                 print "  {t} Customer #{cid} is done placing an order with server #{sid}".format(t = timeString, cid = finishingCust.custID, sid = server.serverID)
                 self.addRevenue()
                 server.releaseCustomer()
+                self.serviceTimes.append(finishingCust.serviceTime)
                 if not server.rushHour or (server.rushHour and self.currentlyRushTime):
                     self.processQueue(server, currentTime)
                 else:
@@ -139,6 +144,7 @@ class ServiceSystem(object):
                 self.numCustomersServed += 1
                 print "  {t} Customer #{cid} has received their food. {num} customers have been served food now.".format(t = timeString, cid = customer.custID, num = self.numCustomersServed)
                 self.waitingForFood.remove(customer)
+                self.foodWaitTimes.append(customer.foodWaitTime)
                 self.systemTimes.append(customer.arrivalTime.timeDiff(currentTime))
                 
     def serverInfo(self):
@@ -172,18 +178,27 @@ class ServiceSystem(object):
         printStatements.printStars()
         print "SIMULATION STATISTICS"
         printStatements.printStars()
+        
         print "Number of customers served: {num}".format(num = self.numCustomersServed)
         numOccupied, numTotal = self.serversOccupiedTotal()
         print "Servers currently occupied: {num}/{total}".format(num = numOccupied, total = numTotal)
+        
+        print ""
+        
+        print "Current order queue length: {num}".format(num = self.queue.qsize())
+        print "Current number of customers waiting for food: {num}".format(num = len(self.waitingForFood))
         serverUtilizationTime = self.getTotalServerUtilization(currentTime)
         serverOpenTime = self.getTotalServerOpenTime(currentTime)
+        
+        print ""
+        
         print "Average server utilization: {0:.2f}%".format(100.0*serverUtilizationTime/serverOpenTime)
         serverPay = (serverOpenTime/3600.0)*inputs.serverHourlyPay
         
         print ""
         
-        print "Server pay: {0:.2f}".format(serverPay)
         print "Revenues: {0:.2f}".format(self.revenues)
+        print "Server pay: {0:.2f}".format(serverPay)
         print "Food costs: {0:.2f}".format(self.foodCosts)
         meanQueueTime = int(statistics.mean(self.queueTimes))
         meanSystemTime = int(statistics.mean(self.systemTimes))
@@ -191,8 +206,19 @@ class ServiceSystem(object):
         msHours, msMinutes, msSeconds = Time.Time().breakdown(meanSystemTime)
         
         print ""
-        print "Mean order queue time: {timeString}".format(timeString = Time.Time().printString(mqHours, mqMinutes, mqSeconds))
+        
         print "Mean system time: {timeString}".format(timeString = Time.Time().printString(msHours, msMinutes, msSeconds))
+        print "\tMean order queue time: {timeString}".format(timeString = Time.Time().printString(mqHours, mqMinutes, mqSeconds))
+        meanServiceTime = int(statistics.mean(self.serviceTimes))
+        servHours, servMinutes, servSeconds = Time.Time().breakdown(meanServiceTime)
+        print "\tMean service time: {timeString}".format(timeString = Time.Time().printString(servHours, servMinutes, servSeconds))
+        meanFoodWait = int(statistics.mean(self.foodWaitTimes))
+        foodHours, foodMinutes, foodSeconds = Time.Time().breakdown(meanFoodWait)
+        print "\tMean food wait times: {timeString}".format(timeString = Time.Time().printString(foodHours, foodMinutes, foodSeconds))
+        
+        print ""
+        
+        foodWait = statistics.mean(self.numPassengersWaitingForFood)
         print "Average number of customers in the ordering queue: {0:.2f}".format(self.numInQueueCumulative/float(currentTime.totalSeconds()))
+        print "Average number of customers waiting for food: {0:.2f}".format(foodWait)
         printStatements.printStars()
-            
