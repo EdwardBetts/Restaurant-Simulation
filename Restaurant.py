@@ -22,7 +22,7 @@ while currentTime.compare(end) <= 0:
         print "{timePrint}".format(timePrint = currentTime.stringInfo())
     
     serviceLines.freeUpServers(currentTime)
-    serviceLines.recordQueueSize()
+    serviceLines.recordInformation()
     
     for person in incomingArrivals:
         if currentTime.compare(person.arrivalTime) == 0:

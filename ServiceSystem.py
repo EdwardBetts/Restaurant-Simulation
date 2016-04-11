@@ -23,6 +23,7 @@ class ServiceSystem(object):
         self.systemTimes = []
         self.numPassengersWaitingForFood = []
         self.serviceTimes = []
+        self.numInQueue = []
         self.foodWaitTimes = []
         self.numInQueueCumulative = 0
         self.currentlyRushTime = False
@@ -34,8 +35,7 @@ class ServiceSystem(object):
         while orderPrice <= 0:
             orderPrice = random.normalvariate(inputs.averageOrderPrice, inputs.orderSD)
         self.revenues += orderPrice
-        self.foodCosts += orderPrice * (inputs.foodCostPercent/100.0)
-        
+     
     def initializeServers(self):
         for i in range(0, self.numServersAvailable):
             newServer = Server.Server()
@@ -45,9 +45,10 @@ class ServiceSystem(object):
             newServer.rushHour = True
             self.servers.append(newServer)
             
-    def recordQueueSize(self):
+    def recordInformation(self):
         self.numInQueueCumulative += self.queue.qsize()
         self.numPassengersWaitingForFood.append(len(self.waitingForFood))
+        self.numInQueue.append(self.queue.qsize())
         
     def startRushTime(self, currentTime):
         if self.numAdditionalServers == 0:
@@ -194,31 +195,51 @@ class ServiceSystem(object):
         
         print "Average server utilization: {0:.2f}%".format(100.0*serverUtilizationTime/serverOpenTime)
         serverPay = (serverOpenTime/3600.0)*inputs.serverHourlyPay
+        serverPay = (serverPay*100)/100.0
+        self.foodCosts = (self.foodCosts*100)/100.0
         
         print ""
         
         print "Revenues: {0:.2f}".format(self.revenues)
-        print "Server pay: {0:.2f}".format(serverPay)
-        print "Food costs: {0:.2f}".format(self.foodCosts)
+        print "Costs: {0:.2f}".format(serverPay)
+        
         meanQueueTime = int(statistics.mean(self.queueTimes))
         meanSystemTime = int(statistics.mean(self.systemTimes))
         mqHours, mqMinutes, mqSeconds = Time.Time().breakdown(meanQueueTime)
         msHours, msMinutes, msSeconds = Time.Time().breakdown(meanSystemTime)
-        
-        print ""
-        
-        print "Mean system time: {timeString}".format(timeString = Time.Time().printString(msHours, msMinutes, msSeconds))
-        print "\tMean order queue time: {timeString}".format(timeString = Time.Time().printString(mqHours, mqMinutes, mqSeconds))
         meanServiceTime = int(statistics.mean(self.serviceTimes))
         servHours, servMinutes, servSeconds = Time.Time().breakdown(meanServiceTime)
-        print "\tMean service time: {timeString}".format(timeString = Time.Time().printString(servHours, servMinutes, servSeconds))
         meanFoodWait = int(statistics.mean(self.foodWaitTimes))
         foodHours, foodMinutes, foodSeconds = Time.Time().breakdown(meanFoodWait)
-        print "\tMean food wait times: {timeString}".format(timeString = Time.Time().printString(foodHours, foodMinutes, foodSeconds))
         
         print ""
         
-        foodWait = statistics.mean(self.numPassengersWaitingForFood)
-        print "Average number of customers in the ordering queue: {0:.2f}".format(self.numInQueueCumulative/float(currentTime.totalSeconds()))
-        print "Average number of customers waiting for food: {0:.2f}".format(foodWait)
+        systemHalfLength = int(statistics.halfLength(self.systemTimes))
+        systemHLHours, systemHLMinutes , systemHLSeconds = Time.Time().breakdown(systemHalfLength)
+        
+        queueHalfLength = int(statistics.halfLength(self.queueTimes))
+        queueHLHours, queueHLMinutes, queueHLSeconds = Time.Time().breakdown(queueHalfLength)
+        
+        serviceHalfLength = int(statistics.halfLength(self.serviceTimes))
+        serviceHLHours, serviceHLMinutes, serviceHLSeconds = Time.Time().breakdown(serviceHalfLength)     
+        
+        foodWaitHalfLength = int(statistics.halfLength(self.foodWaitTimes))
+        foodWaitHLHours, foodWaitHLMinutes, foodWaitHLSeconds = Time.Time().breakdown(foodWaitHalfLength)          
+        print "Mean system time: {timeString} +/- {halfLengthString}".format(timeString = Time.Time().printString(msHours, msMinutes, msSeconds), halfLengthString = Time.Time().printString(systemHLHours, systemHLMinutes, systemHLSeconds))
+        print "\tMean order queue time: {timeString} +/- {halfLengthString}".format(timeString = Time.Time().printString(mqHours, mqMinutes, mqSeconds), halfLengthString = Time.Time().printString(queueHLHours, queueHLMinutes, queueHLSeconds))
+
+        print "\tMean service time: {timeString} +/- {halfLengthString}".format(timeString = Time.Time().printString(servHours, servMinutes, servSeconds), halfLengthString = Time.Time().printString(serviceHLHours, serviceHLMinutes, serviceHLSeconds))
+
+        print "\tMean food wait times: {timeString} +/- {halfLengthString}".format(timeString = Time.Time().printString(foodHours, foodMinutes, foodSeconds), halfLengthString = Time.Time().printString(foodWaitHLHours, foodWaitHLMinutes, foodWaitHLSeconds))
+        
+        print ""
+        
+        numWaitingForFoodHalfLength = statistics.halfLength(self.numPassengersWaitingForFood)
+        numPassengersWaitingForFood = statistics.mean(self.numPassengersWaitingForFood)
+        
+        meanInQueue = statistics.mean(self.numInQueue)
+        numInQueueHalfLength = statistics.halfLength(self.numInQueue)
+        
+        print "Average number of customers in the ordering queue: %.2f +/- %.2f" % (meanInQueue, numInQueueHalfLength)
+        print "Average number of customers waiting for food: %.2f +/- %.2f " % (numPassengersWaitingForFood, numWaitingForFoodHalfLength )
         printStatements.printStars()

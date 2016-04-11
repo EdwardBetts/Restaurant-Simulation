@@ -14,7 +14,6 @@ queueCutoff = 30 #size of queue before putting additional servers on
 serverHourlyPay = 7.25
 averageOrderPrice = 15
 orderSD = 5
-foodCostPercent = 30
 
 #Simulation time
 days = 0
