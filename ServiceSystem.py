@@ -193,7 +193,7 @@ class ServiceSystem(object):
         
         print ""
         
-        print "Average server utilization: {0:.2f}%".format(100.0*serverUtilizationTime/serverOpenTime)
+        print "Average server utilization: {:.2%}".format(serverUtilizationTime/serverOpenTime)
         serverPay = (serverOpenTime/3600.0)*inputs.serverHourlyPay
         serverPay = (serverPay*100)/100.0
         self.foodCosts = (self.foodCosts*100)/100.0
